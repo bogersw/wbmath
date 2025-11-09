@@ -39,8 +39,12 @@ func NewFromNumber[T int | float64](num T) Fraction {
         if i := strings.IndexByte(s, '.'); i >= 1 {
             decimalPlaces = uint(len(s) - i - 1)
         }
+        numerator, _ := strconv.ParseInt(
+            strings.Replace(s, ".", "", 1),
+            10,
+            64)
         return Fraction{
-            numerator:   3,
+            numerator:   int(numerator),
             denominator: wbmath.PowInt(10, decimalPlaces),
         }
     default:
