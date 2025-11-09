@@ -4,6 +4,10 @@ import (
     "errors"
     "fmt"
     "math"
+    "strconv"
+    "strings"
+
+    "github.com/bogersw/wbmath"
 )
 
 type Fraction struct {
@@ -19,15 +23,34 @@ func New(numerator int, denominator int) (Fraction, error) {
         return Fraction{}, errors.New("error: integer divide by zero")
     }
     return Fraction{
-            numerator:   absInt(numerator),
-            denominator: absInt(denominator),
+            numerator:   wbmath.Abs(numerator),
+            denominator: wbmath.Abs(denominator),
             isNegative:  numerator*denominator < 0},
         nil
 }
 
+func NewFromNumber[T int | float64](num T) Fraction {
+    switch any(num).(type) {
+    case int:
+        return Fraction{numerator: int(num), denominator: 1}
+    case float64:
+        s := strconv.FormatFloat(float64(num), 'f', -1, 64)
+        var decimalPlaces uint = 0
+        if i := strings.IndexByte(s, '.'); i >= 1 {
+            decimalPlaces = uint(len(s) - i - 1)
+        }
+        return Fraction{
+            numerator:   3,
+            denominator: wbmath.PowInt(10, decimalPlaces),
+        }
+    default:
+        return Fraction{}
+    }
+}
+
 func (f Fraction) Simplify() Fraction {
 
-    gcd := f.Gcd()
+    gcd := wbmath.Gcd(f.numerator, f.denominator)
     if gcd != 0 {
         f.numerator = f.numerator / gcd
         f.denominator = f.denominator / gcd
@@ -89,7 +112,7 @@ func (f Fraction) Multiply(other Fraction) Fraction {
 func (f Fraction) MultiplyInt(value int) Fraction {
 
     return f.Multiply(Fraction{
-        numerator:   absInt(value),
+        numerator:   wbmath.Abs(value),
         denominator: 1,
         isNegative:  value < 0})
 
@@ -97,52 +120,65 @@ func (f Fraction) MultiplyInt(value int) Fraction {
 
 func (f Fraction) Add(other Fraction) Fraction {
     // Adds two Fractions and returns a new Fraction with the result
-    signF := 1
+    signSelf := 1
     if f.isNegative {
-        signF = -1
+        signSelf = -1
     }
     signOther := 1
     if other.isNegative {
         signOther = -1
     }
-    numerator := signF*f.numerator*other.denominator + signOther*other.numerator*f.denominator
+    numerator := signSelf*f.numerator*other.denominator + signOther*other.numerator*f.denominator
     denominator := f.denominator * other.denominator
     return Fraction{
-        numerator:   absInt(numerator),
+        numerator:   wbmath.Abs(numerator),
         denominator: denominator,
         isNegative:  numerator*denominator < 0}
 }
 
 func (f Fraction) AddInt(value int) Fraction {
     return f.Add(Fraction{
-        numerator:   absInt(value),
+        numerator:   wbmath.Abs(value),
         denominator: 1,
         isNegative:  value < 0})
 }
 
 func (f Fraction) Subtract(other Fraction) Fraction {
     // Subtracts two Fractions and returns a new Fraction with the result
-    numerator := f.numerator*other.denominator - other.numerator*f.denominator
+    signSelf := 1
+    if f.isNegative {
+        signSelf = -1
+    }
+    signOther := 1
+    if other.isNegative {
+        signOther = -1
+    }
+    numerator := signSelf*f.numerator*other.denominator - signOther*other.numerator*f.denominator
     denominator := f.denominator * other.denominator
     return Fraction{
-        numerator:   numerator,
-        denominator: denominator}
+        numerator:   wbmath.Abs(numerator),
+        denominator: denominator,
+        isNegative:  numerator*denominator < 0}
 }
 
 func (f Fraction) SubtractInt(value int) Fraction {
     return f.Subtract(Fraction{
-        numerator:   value,
-        denominator: 1})
+        numerator:   wbmath.Abs(value),
+        denominator: 1,
+        isNegative:  value < 0})
 }
 
 // Divide divides a fraction by another fraction.
 func (f Fraction) Divide(other Fraction) Fraction {
     // Divides two Fractions and returns a new Fraction with the result
-    numerator := f.numerator * other.denominator
-    denominator := f.denominator * other.numerator
+    isNegative := false
+    if f.isNegative && !other.isNegative || !f.isNegative && other.isNegative {
+        isNegative = true
+    }
     return Fraction{
-        numerator:   numerator,
-        denominator: denominator}
+        numerator:   f.numerator * other.denominator,
+        denominator: f.denominator * other.numerator,
+        isNegative:  isNegative}
 }
 
 // DivideInt divides a fraction by an integer value. It returns a new Fraction
@@ -151,36 +187,32 @@ func (f Fraction) DivideInt(value int) (Fraction, error) {
     if value == 0 {
         return Fraction{}, errors.New("error: integer divide by zero")
     }
-    // var sign rune = '+'
-    // if value < 0 {
-    // 	sign = '-'
-    // }
     return f.Divide(Fraction{
-            numerator:   value,
-            denominator: 1}),
+            numerator:   wbmath.Abs(value),
+            denominator: 1,
+            isNegative:  value < 0}),
         nil
 }
 
 func (f Fraction) Pow(exponent uint) Fraction {
-    //numerator := f.numerator
-    //if exponent == f.nthRootDegree {
-    //	// Power n and an n-th root degree cancel each other
-    //	return Fraction{numerator: f.numerator, denominator: f.denominator, nthRootDegree: 1}
-    //}
-    // Power of an n-th root equals the n-th root of the power
-    // TODO: check if exponent / nthRootDegree is not a float
-    numerator := powInt(f.numerator, exponent)
-    denominator := powInt(f.denominator, exponent)
+    numerator := wbmath.PowInt(f.numerator, exponent)
+    denominator := wbmath.PowInt(f.denominator, exponent)
+    // Determine sign: for uneven powers a negative sign is preserved
+    isNegative := false
+    if f.isNegative && exponent%2 != 0 {
+        isNegative = true
+    }
     return Fraction{
         numerator:   numerator,
-        denominator: denominator}
+        denominator: denominator,
+        isNegative:  isNegative}
 }
 
 func (f Fraction) NthRoot(degree uint) Fraction {
     //TODO: negative fractions can have uneven degrees, not even degrees
     numerator := f.numerator
     denominator := f.denominator
-    if isNthRootInt(numerator, degree) && isNthRootInt(f.denominator, degree) {
+    if wbmath.IsNthRootInt(numerator, degree) && wbmath.IsNthRootInt(f.denominator, degree) {
         // The nth-roots of the numerator and the denominator are integers => process
         numerator = int(math.Round(math.Pow(float64(numerator), 1.0/float64(degree))))
         denominator = int(math.Round(math.Pow(float64(denominator), 1.0/float64(degree))))
@@ -188,66 +220,3 @@ func (f Fraction) NthRoot(degree uint) Fraction {
     }
     return Fraction{numerator: numerator, denominator: f.denominator}
 }
-
-func (f Fraction) Gcd() int {
-    // Euclidean algorithm for computing the greatest common divisor (gcd).
-    // The gcd of two numbers is the largest positive integer that divides
-    // both numbers without leaving a remainder.
-    // The function is associative: for example, the gcd of three numbers
-    // a, b, c is equal to: gcd(a, b, c) = gcd(a, gcd(b, c). And so on.
-    a := absInt(f.numerator)
-    b := absInt(f.denominator)
-
-    if a == 0 || b == 0 {
-        return a + b
-    }
-    for b != 0 {
-        a, b = b, a%b
-    }
-    return a
-}
-
-// ============================================================================
-// Private functions
-// ============================================================================
-
-func isNthRootInt(value int, degree uint) bool {
-    nthRoot := math.Pow(float64(value), 1.0/float64(degree))
-    nthRootRounded := math.Round(nthRoot)
-    return math.Abs(nthRoot-nthRootRounded) <= 0.00001
-}
-
-// Pow returns base**exp, with base an integer and exp an unsigned
-// integer.
-func powInt(base int, exponent uint) int {
-    // In each step the exponent is divided by two (shift bits
-    // to the right by 1) and the value is squared.
-    result := 1
-    for exponent > 0 {
-        if exponent&1 != 0 {
-            // Uneven exponent
-            result *= base
-        }
-        // Shift bits right by 1 (basically divide by 2, binary)
-        exponent >>= 1
-        // Square the value. To prevent doing this when the end
-        // state (exp=0) is reached, we check for 0.
-        if exponent != 0 {
-            base *= base
-        }
-    }
-    return result
-}
-
-func absInt(value int) int {
-    return max(-value, value)
-    //if value < 0 {
-    //	return -value
-    //}
-    //return value
-}
-
-//func roundToDecimalPlaces(value float64, places int) float64 {
-//	scale := math.Pow(10, float64(places))
-//	return math.Round(value*scale) / scale
-//}

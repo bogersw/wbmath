@@ -3,3 +3,4 @@
 .cache
 development
 .idea
+*.code-workspace

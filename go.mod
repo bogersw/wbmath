@@ -1,3 +1,3 @@
-module wbmath
+module github.com/bogersw/wbmath
 
-go 1.24
+go 1.25.4
