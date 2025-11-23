@@ -176,3 +176,13 @@ func TestAsIntegerRatioAndNilReceiver(t *testing.T) {
 		t.Fatalf("nil.Divide(...) should return nil")
 	}
 }
+
+func TestMustNewFromString(t *testing.T) {
+	f := MustNewFromString("4/6")
+	if f == nil {
+		t.Fatalf("MustNewFromString returned nil")
+	}
+	if v := f.Evaluate(); !almostEqual(v, 2.0/3.0) {
+		t.Fatalf("MustNewFromString Evaluate = %v; want %v", v, 2.0/3.0)
+	}
+}
