@@ -1,12 +1,14 @@
 // Package vector provides a generic, slice-backed numeric Vector[T] type.
+// The Vector type is a bit of a mix between `true` vectors  and numeric
+// 1D arrays / slices. This can be seen in the methods that are defined
+// on the type. There is a focus on practical use and broad applicability.
+// Elements of a Vector are constrained by `wbmath.SignedNumber`.
 //
-// The Vector type is a wrapper around a Go slice that supports common
-// numeric operations and utilities for elements constrained by
-// `wbmath.SignedNumber`. Available functionality includes constructors
-// (New, NewFromValue, NewFromRange), cloning (Clone, CloneAsFloat64,
-// CloneAsInt), element-wise arithmetic with optional offsets (Add, Subtract,
-// Multiply, Divide), scalar multiplication (Scale), reductions (Sum, Product,
-// Magnitude), normalizing (Normalize) and rounding (Round).
+// Available functionality includes constructors (New, NewFromValue,
+// NewFromRange), cloning (Clone, CloneAsFloat64, CloneAsInt), element-wise
+// arithmetic with optional offsets (Add, Subtract, Multiply, Divide), scalar
+// multiplication (Scale), reductions (Sum, Product, Magnitude), normalizing
+// (Normalize) and rounding (Round).
 //
 // Important details:
 //
@@ -23,6 +25,7 @@
 package vector
 
 import (
+    "errors"
     "math"
 
     "github.com/bogersw/wbmath"
@@ -175,6 +178,16 @@ func (v Vector[T]) Multiply(other Vector[T], offset int) Vector[T] {
 // matching elements are divided: when it's longer, extra elements are ignored.
 func (v Vector[T]) Divide(other Vector[T], offset int) Vector[T] {
     return v.operation(other, offset, "divide")
+}
+
+// DotProduct calculates the dot product of two vectors: the sum of the products
+// of the corresponding elements of the two vectors. If the dot product is zero
+// then the two vectors are perpendicular.
+func (v Vector[T]) DotProduct(other Vector[T]) (T, error) {
+    if len(v) != len(other) {
+        return 0, errors.New("vectors must have the same length")
+    }
+    return v.Clone().Multiply(other, 0).Sum(), nil
 }
 
 // Scale implements scalar multiplication: every element in the current Vector
