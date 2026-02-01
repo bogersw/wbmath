@@ -200,7 +200,10 @@ func (v Vector[T]) Scale(factor T) Vector[T] {
 	return v
 }
 
-func (v Vector[T]) Map() Vector[T] {
+func (v Vector[T]) Map(transform func(T) T) Vector[T] {
+	for index := range v {
+		v[index] = transform(v[index])
+	}
 	return v
 }
 
@@ -216,7 +219,7 @@ func (v Vector[T]) Sum() T {
 // Magnitude returns the size / length of a Vector. It is equal to the square
 // root of the sum of the squared elements.
 func (v Vector[T]) Magnitude() float64 {
-	var sumProducts T = v.Clone().Multiply(v, 0).Sum()
+	var sumProducts = v.Clone().Multiply(v, 0).Sum()
 	return math.Sqrt(float64(sumProducts))
 }
 
